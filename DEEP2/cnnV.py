@@ -1,0 +1,64 @@
+import torch
+import torch.nn as nn
+import torch.optim as optim
+
+import torchvision
+import torchvision.transforms as transforms
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+class SimpleCNN(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.conv1 = nn.Conv2d(1, 8, 3)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.fc1 = nn.Linear(8*13*13, 10)
+
+    def forward(self, x):
+        x = self.pool(torch.relu(self.conv1(x)))
+        x = x.view(-1, 8*13*13)
+        return self.fc1(x)
+    
+transform = transforms.ToTensor()
+trainset = torchvision.datasets.MNIST(root='./', train=True, download=True, transform=transform)
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=64, shuffle=True)
+testset = torchvision.datasets.MNIST(root='./', train=False, download=True, transform=transform)
+testloader = torch.utils.data.DataLoader(testset, batch_size=64, shuffle=False)
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model = SimpleCNN().to(device)
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+for epoch in range(2):
+    running_loss = 0.0
+    for images, labels in trainloader:
+        images, labels = images.to(device), labels.to(device) 
+        optimizer.zero_grad()
+        outputs = model(images)
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
+    print(f"Epoch: {epoch+1}, Loss: {running_loss/len(trainloader):.4f}")
+
+correct, total = 0, 0
+with torch.no_grad():
+    for images, labels in testloader:
+        images, labels = images.to(device), labels.to(device)
+        outputs = model(images)
+        _, predicted = torch.max(outputs, 1)
+        total += labels.size(0)
+        correct += (predicted == labels).sum().item()
+    print(f"Test Accuracy: {100*correct/total:.2f}%")
+
+dataiter = iter(testloader)
+images, labels = next(dataiter)
+
+fig = plt.figure(figsize=(10, 4))
+for i in range(8):
+    ax = fig.add_subplot(2, 4, i+1, xticks=[], yticks=[])
+    ax.imshow(np.squeeze(images[i].numpy()), cmap='gray')
+    ax.set_title(f"Label: {labels[i].item()}")
+plt.tight_layout()
+plt.savefig("Training.png")
