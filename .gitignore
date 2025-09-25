@@ -6,3 +6,5 @@ Project3/env
 Project4/mp-env
 Project2/resnet.pth
 GPT/engpt
+GPT/modelEX
+GPT/gpt2-finetune
